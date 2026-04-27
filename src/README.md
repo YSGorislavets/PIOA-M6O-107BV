@@ -14,7 +14,7 @@
 
 3. Запуск
 -bash
-python -m src
+python -m src.db
 
 4. Функции
 добавление записей
