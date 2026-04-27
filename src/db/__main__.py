@@ -1,4 +1,4 @@
-from src.tui import main
+from src.db.tui import main
 
 if __name__ == "__main__":
     main()

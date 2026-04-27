@@ -1,5 +1,5 @@
 import sys
-from src.db.backend import Table, ValidationError, RecordNotFoundError
+from src.db.backend.memory import Table, DatabaseError, RecordNotFoundError, ValidationError
 
 
 class AttendanceApp:
