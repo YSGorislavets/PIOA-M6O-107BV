@@ -14,8 +14,9 @@ class Table:
         self._next_id += 1
         return self._data[self._next_id - 1].copy()
 
-    def get_all(self, filters: Optional[Dict] = None) -> List[Dict]:
-        # Возвращаем глубокие копии записей, чтобы внешний код не мог изменить БД
+    def get_all(self, filters: Optional[Dict] = None,
+                sort_by: Optional[str] = None,
+                reverse: bool = False) -> List[Dict]:
         result = [deepcopy(record) for record in self._data.values()]
 
         if filters:
@@ -28,7 +29,12 @@ class Table:
                         break
                 if match:
                     filtered.append(record)
-            return filtered
+            result = filtered
+
+        if sort_by and result:
+            if all(sort_by in record for record in result):
+                result.sort(key=lambda x: x[sort_by], reverse=reverse)
+
         return result
 
     def update(self, record_id: int, updates: Dict) -> Dict:
@@ -50,3 +56,6 @@ class Table:
         if record_id not in self._data:
             raise RecordNotFoundError(f"Запись с id={record_id} не найдена")
         return self._data[record_id].copy()
+
+    def count(self) -> int:
+        return len(self._data)
