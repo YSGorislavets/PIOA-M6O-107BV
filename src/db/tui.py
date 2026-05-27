@@ -1,5 +1,5 @@
 import sys
-from src.db.backend.memory import Table, DatabaseError, RecordNotFoundError, ValidationError
+from src.db.backend.memory import Table, RecordNotFoundError, ValidationError
 
 
 class AttendanceApp:
@@ -13,6 +13,7 @@ class AttendanceApp:
         print("3. Поиск с фильтрацией")
         print("4. Обновить запись")
         print("5. Удалить запись")
+        print("6. Сортировать записи")
         print("0. Выход")
 
     def add_record(self):
@@ -176,6 +177,33 @@ class AttendanceApp:
         except (ValueError, RecordNotFoundError) as e:
             print(f" Ошибка: {e}")
 
+    def sort_records(self):
+
+        print("\nСОРТИРОВКА ЗАПИСЕЙ")
+        records = self.table.get_all()
+        if not records:
+            print("Нет записей для сортировки")
+            return
+
+        # Берём ключи из первой записи (исключая id)
+        sample = records[0]
+        fields = [k for k in sample.keys() if k != 'id']
+        if not fields:
+            print("Нет полей для сортировки")
+            return
+
+        print("Доступные поля:", ", ".join(fields))
+        sort_by = input("Введите поле для сортировки: ").strip()
+        if sort_by not in fields:
+            print("Неверное поле")
+            return
+
+        direction = input("По возрастанию? (да/нет): ").strip().lower()
+        reverse = direction != 'да'
+
+        sorted_records = self.table.get_all(sort_by=sort_by, reverse=reverse)
+        self._print_records(sorted_records)
+
     def _print_records(self, records):
 
         print(
@@ -198,6 +226,7 @@ class AttendanceApp:
             '3': self.search_records,
             '4': self.update_record,
             '5': self.delete_record,
+            '6': self.sort_records,
         }
 
         while True:
@@ -220,3 +249,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
