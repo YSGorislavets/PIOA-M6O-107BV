@@ -121,3 +121,4 @@ class TestTable:
         )
         grades = [r["grade"] for r in result]
         assert grades == [3, 5]
+
