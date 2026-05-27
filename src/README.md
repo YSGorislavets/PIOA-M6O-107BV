@@ -1,21 +1,24 @@
 # Учёт посещения дополнительных занятий по математическому анализу
 
 ## Структура проекта
- PythonProject2/
-├── src/
-│ ├── db/
-│ │ ├── backend/
-│ │ │ ├── init.py
-│ │ │ ├── memory.py 
-│ │ │ └── errors.py 
-│ │ ├── init.py
-│ │ ├── main.py
-│ │ └── tui.py 
-├── tests/
-│ ├── init.py
-│ └── test_memory.py (покрытие >80%)
-├── .gitignore
-└── README.md
+PythonProject2/                     # Корень проекта (PIOA-M60-107BV-25) 
+├── src/                            
+│   ├── db/                         
+│   │   ├── backend/                
+│   │   │   ├── __init__.py
+│   │   │   ├── errors.py           # Классы исключений
+│   │   │   └── memory.py           
+│   │   ├── __init__.py
+│   │   ├── __main__.py             # Точка входа (запуск TUI)
+│   │   └── tui.py                  
+│   └── __init__.py
+├── tests/                          # Автоматические тесты
+│   ├── __init__.py
+│   ├── test_main.py                
+│   ├── test_memory.py              
+│   └── test_tui.py                  
+├── .gitignore                      
+└── README.md                       
 
 
 ### Функции
