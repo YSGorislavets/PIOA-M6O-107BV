@@ -119,3 +119,6 @@ class TestTUI:
         captured = capsys.readouterr()
         assert "УЧЁТ ПОСЕЩЕНИЙ" in captured.out
 
+
+
+

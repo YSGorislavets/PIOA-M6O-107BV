@@ -1,16 +1,23 @@
 from copy import deepcopy
 from typing import List, Dict, Optional
-from src.db.backend.errors import RecordNotFoundError
+from src.db.backend.errors import RecordNotFoundError, ValidationError, ColumnNotFoundError
 
 
 class Table:
+    REQUIRED_COLUMNS = ["student_name", "group", "date", "topic", "is_present", "homework_done", "grade"]
+
     def __init__(self):
         self._data: Dict[int, Dict] = {}
         self._next_id = 1
 
     def insert(self, record: Dict) -> Dict:
-        record["id"] = self._next_id
-        self._data[self._next_id] = record.copy()
+        missing_fields = [field for field in self.REQUIRED_COLUMNS if field not in record]
+        if missing_fields:
+            raise ValidationError(f"Отсутствуют обязательные поля: {missing_fields}")
+
+        record_copy = record.copy()
+        record_copy["id"] = self._next_id
+        self._data[self._next_id] = record_copy
         self._next_id += 1
         return self._data[self._next_id - 1].copy()
 
@@ -32,8 +39,12 @@ class Table:
             result = filtered
 
         if sort_by and result:
-            if all(sort_by in record for record in result):
-                result.sort(key=lambda x: x[sort_by], reverse=reverse)
+            missing = [i for i, record in enumerate(result) if sort_by not in record]
+            if missing:
+                raise ColumnNotFoundError(
+                    f"Поле '{sort_by}' отсутствует у записи(ей) с индексами {missing}"
+                )
+            result.sort(key=lambda x: x[sort_by], reverse=reverse)
 
         return result
 
@@ -59,3 +70,4 @@ class Table:
 
     def count(self) -> int:
         return len(self._data)
+

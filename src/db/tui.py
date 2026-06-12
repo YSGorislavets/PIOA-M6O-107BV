@@ -115,7 +115,6 @@ class AttendanceApp:
             self._print_records(records)
 
     def update_record(self):
-
         print("\nОБНОВЛЕНИЕ ЗАПИСИ")
         try:
             record_id = int(input("ID записи для обновления: "))
@@ -157,7 +156,14 @@ class AttendanceApp:
 
             grade = input("Новая оценка (0-5): ").strip()
             if grade:
-                updates["grade"] = int(grade)
+                try:
+                    grade_val = int(grade)
+                    if not 0 <= grade_val <= 5:
+                        raise ValidationError("Оценка должна быть от 0 до 5")
+                    updates["grade"] = grade_val
+                except ValueError:
+                    print("Ошибка: Оценка должна быть числом")
+                    return
 
             if updates:
                 self.table.update(record_id, updates)
