@@ -1,14 +1,33 @@
 import sys
-from src.db.backend.memory import Table
-from src.db.backend.errors import RecordNotFoundError, ValidationError
+from src.db.backend.memory import MemoryDatabase
+from src.db.backend.file import FileDatabase
+from src.db.backend.csv import CSVDatabase
+from src.db.backend.errors import RecordNotFoundError, ValidationError, ColumnNotFoundError
 
 
 class AttendanceApp:
-    def __init__(self):
-        self.table = Table()
+    def __init__(self, db_type="memory"):
+        if db_type == "file":
+            self.db = FileDatabase("data")
+        elif db_type == "csv":
+            self.db = CSVDatabase("csv_data")
+        else:
+            self.db = MemoryDatabase()
+        self._current_table = None
+        self._init_tables()
+
+    def _init_tables(self):
+        table_name = "attendance"
+        columns = ["student_name", "group", "date", "topic", "is_present", "homework_done", "grade"]
+
+        if not self.db.table_exists(table_name):
+            self.db.create_table(table_name, columns)
+        self._current_table = table_name
 
     def _print_menu(self):
         print("   УЧЁТ ПОСЕЩЕНИЙ ЗАНЯТИЙ ПО МАТАНУ")
+        print(f"Тип БД: {self._get_db_type_name()}")
+        print(f"Текущая таблица: {self._current_table}")
         print("1. Добавить запись о посещении")
         print("2. Показать все записи")
         print("3. Поиск с фильтрацией")
@@ -17,8 +36,15 @@ class AttendanceApp:
         print("6. Сортировать записи")
         print("0. Выход")
 
-    def add_record(self):
+    def _get_db_type_name(self):
+        if isinstance(self.db, FileDatabase):
+            return "File (JSON)"
+        elif isinstance(self.db, CSVDatabase):
+            return "File (CSV)"
+        else:
+            return "In-Memory"
 
+    def add_record(self):
         print("\nДОБАВЛЕНИЕ ЗАПИСИ")
         try:
             name = input("ФИО студента: ").strip()
@@ -53,107 +79,87 @@ class AttendanceApp:
             else:
                 grade = None
 
-            record = self.table.insert({
-                "student_name": name,
-                "group": group,
-                "date": date,
-                "topic": topic,
-                "is_present": is_present == 'да',
-                "homework_done": homework == 'да',
-                "grade": grade
-            })
-            print(f"Запись добавлена! ID: {record['id']}")
+            columns = self.db.get_columns(self._current_table)
+            values = [name, group, date, topic, is_present == 'да', homework == 'да', grade]
+
+            self.db.insert_record(self._current_table, tuple(values))
+            print(f"Запись добавлена!")
+
         except (ValidationError, ValueError) as e:
             print(f"Ошибка: {e}")
 
     def show_all(self):
-
         print("\n--- ВСЕ ЗАПИСИ ---")
-        records = self.table.get_all()
+        records = self.db.select_records(self._current_table)
+        columns = self.db.get_columns(self._current_table)
 
         if not records:
             print("Нет записей")
             return
 
-        self._print_records(records)
+        self._print_records(records, columns)
 
     def search_records(self):
-
-        print("\nПОИСК ")
+        print("\nПОИСК С ФИЛЬТРАЦИЕЙ")
         print("Оставьте поле пустым, чтобы не учитывать его")
+        print("Формат фильтра: колонка=значение (через пробел)")
+        print("Пример: student_name=Иван group=М-101")
 
+        filter_str = input("Фильтры: ").strip()
         filters = {}
 
-        name = input("ФИО студента: ").strip()
-        if name:
-            filters["student_name"] = name
+        if filter_str:
+            for item in filter_str.split():
+                if '=' in item:
+                    key, val = item.split('=', 1)
+                    filters[key.strip()] = val.strip()
+                else:
+                    print(f"Пропущен некорректный фильтр: {item}")
 
-        group = input("Номер группы: ").strip()
-        if group:
-            filters["group"] = group
-
-        date = input("Дата занятия: ").strip()
-        if date:
-            filters["date"] = date
-
-        topic = input("Тема занятия: ").strip()
-        if topic:
-            filters["topic"] = topic
-
-        present = input("Присутствовал? (да/нет): ").strip().lower()
-        if present:
-            if present not in ['да', 'нет']:
-                print("Неверный ввод, пропускаем фильтр")
-            else:
-                filters["is_present"] = present == 'да'
-
-        records = self.table.get_all(filters if filters else None)
+        records = self.db.select_records(self._current_table, **filters)
+        columns = self.db.get_columns(self._current_table)
 
         if not records:
             print("Записей не найдено")
         else:
-            self._print_records(records)
+            self._print_records(records, columns)
 
     def update_record(self):
         print("\nОБНОВЛЕНИЕ ЗАПИСИ")
         try:
-            record_id = int(input("ID записи для обновления: "))
-            self.table.get_by_id(record_id)
+            records = self.db.select_records(self._current_table)
+            columns = self.db.get_columns(self._current_table)
+
+            if not records:
+                print("Нет записей для обновления")
+                return
+
+            print("\nСуществующие записи:")
+            self._print_records(records, columns)
+
+            record_id = int(input("\nВведите ID записи для обновления: "))
 
             print("\nВведите новые значения (оставьте пустым, чтобы не менять):")
 
             updates = {}
-
             name = input("Новое ФИО: ").strip()
             if name:
                 updates["student_name"] = name
-
             group = input("Новая группа: ").strip()
             if group:
                 updates["group"] = group
-
             date = input("Новая дата: ").strip()
             if date:
                 updates["date"] = date
-
             topic = input("Новая тема: ").strip()
             if topic:
                 updates["topic"] = topic
-
             present = input("Присутствовал? (да/нет): ").strip().lower()
-            if present:
-                if present not in ['да', 'нет']:
-                    print("Неверный ввод")
-                else:
-                    updates["is_present"] = present == 'да'
-
+            if present and present in ['да', 'нет']:
+                updates["is_present"] = present == 'да'
             homework = input("ДЗ сделана? (да/нет): ").strip().lower()
-            if homework:
-                if homework not in ['да', 'нет']:
-                    print("Неверный ввод")
-                else:
-                    updates["homework_done"] = homework == 'да'
-
+            if homework and homework in ['да', 'нет']:
+                updates["homework_done"] = homework == 'да'
             grade = input("Новая оценка (0-5): ").strip()
             if grade:
                 try:
@@ -166,7 +172,7 @@ class AttendanceApp:
                     return
 
             if updates:
-                self.table.update(record_id, updates)
+                self.db.update_records(self._current_table, updates)
                 print("Запись обновлена")
             else:
                 print("Нет изменений")
@@ -175,56 +181,60 @@ class AttendanceApp:
             print(f"Ошибка: {e}")
 
     def delete_record(self):
-
-        print("\nУДАЛЕНИЕ ЗАПИСИ ")
+        print("\nУДАЛЕНИЕ ЗАПИСИ")
         try:
             record_id = int(input("ID записи для удаления: "))
-            self.table.delete(record_id)
-            print(" Запись удалена")
+            print("В новой версии удаление работает по фильтру. Удаление отменено.")
+            confirm = input("Удалить ВСЕ записи? (д/н): ").strip().lower()
+            if confirm in ('д', 'да', 'y', 'yes'):
+                self.db.clear_table(self._current_table)
+                print("Все записи удалены")
         except (ValueError, RecordNotFoundError) as e:
-            print(f" Ошибка: {e}")
+            print(f"Ошибка: {e}")
 
     def sort_records(self):
-
         print("\nСОРТИРОВКА ЗАПИСЕЙ")
-        records = self.table.get_all()
+        columns = self.db.get_columns(self._current_table)
+        records = self.db.select_records(self._current_table)
+
         if not records:
             print("Нет записей для сортировки")
             return
 
-        # Берём ключи из первой записи (исключая id)
-        sample = records[0]
-        fields = [k for k in sample.keys() if k != 'id']
-        if not fields:
-            print("Нет полей для сортировки")
-            return
-
-        print("Доступные поля:", ", ".join(fields))
+        print("Доступные поля:", ", ".join(columns))
         sort_by = input("Введите поле для сортировки: ").strip()
-        if sort_by not in fields:
+        if sort_by not in columns:
             print("Неверное поле")
             return
 
         direction = input("По возрастанию? (да/нет): ").strip().lower()
         reverse = direction != 'да'
 
-        sorted_records = self.table.get_all(sort_by=sort_by, reverse=reverse)
-        self._print_records(sorted_records)
+        try:
+            sorted_records = self.db.sort_records(self._current_table, sort_by, reverse)
+            self._print_records(sorted_records, columns)
+        except ColumnNotFoundError as e:
+            print(f"Ошибка: {e}")
 
-    def _print_records(self, records):
+    def _print_records(self, records, columns):
+        if not records:
+            print("Нет записей")
+            return
 
-        print(
-            f"\n{'ID':<4} {'ФИО':<20} {'Группа':<8} {'Дата':<12} {'Тема':<20} {'Присутствие':<12} {'ДЗ':<4} {'Оценка':<6}")
-        print("-" * 95)
-        for r in records:
-            present = "Да" if r['is_present'] else "Нет"
-            homework = "Да" if r['homework_done'] else "Нет"
-            grade = str(r['grade']) if r['grade'] is not None else "-"
-            print(
-                f"{r['id']:<4} {r['student_name']:<20} {r['group']:<8} {r['date']:<12} {r['topic']:<20} {present:<12} {homework:<4} {grade:<6}")
+        header = ""
+        for col in columns:
+            header += f"{col:<20} "
+        print("\n" + header)
+        print("-" * (20 * len(columns)))
+
+        for record in records:
+            row = ""
+            for val in record:
+                val_str = str(val) if val is not None else "-"
+                row += f"{val_str:<20} "
+            print(row)
 
     def run(self):
-
         print("Добро пожаловать в систему учёта посещений занятий по матану!")
 
         actions = {
@@ -241,7 +251,7 @@ class AttendanceApp:
             choice = input("Выберите действие: ").strip()
 
             if choice == '0':
-                print("До свидания")
+                print("До свидания!")
                 sys.exit(0)
             elif choice in actions:
                 actions[choice]()
@@ -249,11 +259,26 @@ class AttendanceApp:
                 print("Неверный выбор")
 
 
+def select_database_type():
+    print("\nВЫБОР ТИПА БАЗЫ ДАННЫХ")
+    print("1. In-Memory (данные не сохраняются)")
+    print("2. File Database (JSON, данные сохраняются в data/)")
+    print("3. CSV Database (данные сохраняются в csv_data/)")
+    choice = input("Выберите (1/2/3): ").strip()
+
+    if choice == "2":
+        return "file"
+    elif choice == "3":
+        return "csv"
+    else:
+        return "memory"
+
+
 def main():
-    app = AttendanceApp()
+    db_type = select_database_type()
+    app = AttendanceApp(db_type=db_type)
     app.run()
 
 
 if __name__ == "__main__":
     main()
-

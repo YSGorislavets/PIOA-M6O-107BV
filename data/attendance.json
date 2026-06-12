@@ -1,0 +1,12 @@
+{
+  "columns": [
+    "student_name",
+    "group",
+    "date",
+    "topic",
+    "is_present",
+    "homework_done",
+    "grade"
+  ],
+  "records": []
+}

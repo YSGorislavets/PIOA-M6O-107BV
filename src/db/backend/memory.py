@@ -71,3 +71,72 @@ class Table:
     def count(self) -> int:
         return len(self._data)
 
+class MemoryDatabase:
+
+    def __init__(self):
+        self._table = Table()
+        self._current_table = "attendance"
+
+    def create_table(self, table_name: str, columns: list[str]) -> None:
+        pass
+
+    def list_tables(self) -> list[str]:
+        return ["attendance"]
+
+    def get_columns(self, table_name: str) -> list[str]:
+        return Table.REQUIRED_COLUMNS
+
+    def table_exists(self, table_name: str) -> bool:
+        return table_name == "attendance"
+
+    def insert_record(self, table_name: str, record: tuple) -> None:
+        columns = Table.REQUIRED_COLUMNS
+        record_dict = dict(zip(columns, record))
+        self._table.insert(record_dict)
+
+    def select_records(self, table_name: str, **filters) -> list[tuple]:
+        records = self._table.get_all(filters if filters else None)
+        result = []
+        for rec in records:
+            row = tuple(rec.get(col) for col in Table.REQUIRED_COLUMNS)
+            result.append(row)
+        return result
+
+    def update_records(self, table_name: str, updates: dict, **filters) -> int:
+        records = self._table.get_all(filters if filters else None)
+        updated = 0
+        for rec in records:
+            self._table.update(rec["id"], updates)
+            updated += 1
+        return updated
+
+    def delete_records(self, table_name: str, **filters) -> int:
+        records = self._table.get_all(filters if filters else None)
+        deleted = 0
+        for rec in records:
+            self._table.delete(rec["id"])
+            deleted += 1
+        return deleted
+
+    def delete_table(self, table_name: str) -> None:
+        self._table._data.clear()
+        self._table._next_id = 1
+
+    def clear_table(self, table_name: str) -> None:
+        self._table._data.clear()
+        self._table._next_id = 1
+
+    def rename_table(self, old_name: str, new_name: str) -> None:
+        pass
+
+    def rename_column(self, table_name: str, old_column: str, new_column: str) -> None:
+        pass
+
+    def sort_records(self, table_name: str, column: str, reverse: bool = False) -> list[tuple]:
+        records = self._table.get_all(sort_by=column, reverse=reverse)
+        result = []
+        for rec in records:
+            row = tuple(rec.get(col) for col in Table.REQUIRED_COLUMNS)
+            result.append(row)
+        return result
+

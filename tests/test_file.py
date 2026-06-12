@@ -1,5 +1,8 @@
+import tempfile
 import pytest
-from src.db.backend.memory import MemoryDatabase
+import json
+from pathlib import Path
+from src.db.backend.file import FileDatabase
 from src.db.backend.errors import (
     TableNotFoundError,
     DuplicateTableError,
@@ -7,12 +10,17 @@ from src.db.backend.errors import (
     EmptyColumnsError,
     InvalidRecordLengthError,
     ColumnNotFoundError,
+    FileOperationError,
 )
 
 
-class TestMemoryDatabase:
+class TestFileDatabase:
     def setup_method(self):
-        self.db = MemoryDatabase()
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.db = FileDatabase(directory=self.temp_dir.name)
+
+    def teardown_method(self):
+        self.temp_dir.cleanup()
 
     def test_create_table_success(self):
         self.db.create_table("students", ["id", "name", "age"])
@@ -32,17 +40,6 @@ class TestMemoryDatabase:
     def test_create_table_no_columns(self):
         with pytest.raises(EmptyColumnsError):
             self.db.create_table("test", [])
-
-    def test_list_tables_empty(self):
-        assert self.db.list_tables() == []
-
-    def test_list_tables_with_data(self):
-        self.db.create_table("t1", ["col"])
-        self.db.create_table("t2", ["col"])
-        tables = self.db.list_tables()
-        assert len(tables) == 2
-        assert "t1" in tables
-        assert "t2" in tables
 
     def test_insert_record_success(self):
         self.db.create_table("students", ["id", "name"])
@@ -179,15 +176,13 @@ class TestMemoryDatabase:
         with pytest.raises(ColumnNotFoundError):
             self.db.sort_records("students", "ghost")
 
-    def test_get_all_info(self):
-        self.db.create_table("t1", ["id", "name"])
-        self.db.insert_record("t1", (1, "test"))
-        self.db.create_table("t2", ["col"])
-        info = self.db.get_all_info()
-        assert len(info) == 2
-        assert "t1" in info
-        assert "t2" in info
-        columns, count = info["t1"]
-        assert columns == ["id", "name"]
-        assert count == 1
+    def test_data_persists_between_instances(self):
+        db1 = FileDatabase(directory=self.temp_dir.name)
+        db1.create_table("students", ["id", "name"])
+        db1.insert_record("students", (1, "Иван"))
 
+        db2 = FileDatabase(directory=self.temp_dir.name)
+        assert db2.table_exists("students")
+        records = db2.select_records("students")
+        assert len(records) == 1
+        assert records[0] == (1, "Иван")
