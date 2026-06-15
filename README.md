@@ -24,8 +24,7 @@ PythonProject2/
 │ ├── test_csv.py # Тесты CSV
 │ ├── test_file.py # Тесты JSON
 │ ├── test_main.py # Тесты точки входа
-│ ├── test_memory.py # Тесты in-memory
-│ └── test_tui.py # Тесты интерфейса
+│ └── test_memory.py # Тесты in-memory
 ├── .gitignore
 └── README.md
 ```
