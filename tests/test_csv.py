@@ -11,6 +11,7 @@ from src.db.backend.errors import (
     InvalidRecordLengthError,
     ColumnNotFoundError,
     FileOperationError,
+    InvalidColumnNameError,
 )
 
 
@@ -42,7 +43,7 @@ class TestCSVDatabase:
             self.db.create_table("test", [])
 
     def test_create_table_duplicate_columns(self):
-        with pytest.raises(EmptyColumnsError) as exc_info:
+        with pytest.raises(InvalidColumnNameError) as exc_info:
             self.db.create_table("students", ["id", "name", "id"])
         assert "Названия колонок не должны повторяться" in str(exc_info.value)
 

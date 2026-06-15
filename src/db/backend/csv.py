@@ -212,5 +212,12 @@ class CSVDatabase(Database):
 
         return result
 
+    def get_all_info(self) -> dict[str, tuple[list[str], int]]:
+        result = {}
+        for table_name in self.list_tables():
+            columns, records = self._load_table(table_name)
+            result[table_name] = (columns.copy(), len(records))
+        return result
+
 
 
