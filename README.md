@@ -27,7 +27,6 @@ PythonProject2/
 │ ├── test_memory.py # Тесты in-memory
 │ └── test_tui.py # Тесты интерфейса
 ├── .gitignore
-├── coverage.txt
 └── README.md
 ```
 ### Функции
